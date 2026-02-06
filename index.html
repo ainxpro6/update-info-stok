@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>Update Info Draft Tool</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@4/dark.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css"> <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <style>
+        :root {
+            color-scheme: dark; /* Memastikan scrollbar & elemen native jadi gelap */
+            --bg: #020617;
+            --surface: #0f172a;
+            --surface-hover: #1e293b;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --container-width: 800px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at top, #1e293b 0%, #020617 100%);
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .wrap {
+            max-width: var(--container-width);
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header { margin-bottom: 32px; }
+        .title { font-size: 28px; font-weight: 700; margin: 0 0 8px 0; }
+        .subtitle { color: var(--text-muted); font-size: 15px; }
+
+        /* UPLOAD BOX */
+        .upload-box {
+            position: relative;
+            background: rgba(15, 23, 42, 0.5);
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .upload-box:hover, .upload-box:focus { border-color: var(--primary); background: rgba(59, 130, 246, 0.05); }
+        .upload-text { color: var(--text-muted); font-weight: 500; }
+
+        /* CONTROLS */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .field { display: flex; flex-direction: column; gap: 8px; }
+        .field label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+
+        .input-wrap, .select-trigger {
+            height: 48px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            cursor: pointer; /* Biar kerasa bisa diklik */
+        }
+        
+        .input-wrap:hover, .select-trigger:hover { border-color: var(--primary); }
+
+        /* CUSTOM CSS UNTUK INPUT AGAR MENYATU DENGAN FLATPICKR */
+        input.flatpickr-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            font-family: inherit;
+            outline: none;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* CUSTOM SELECT (Sama seperti sebelumnya) */
+        .custom-select { position: relative; user-select: none; }
+        .select-trigger { justify-content: space-between; }
+        .select-options {
+            position: absolute;
+            top: calc(100% + 8px); left: 0; width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            z-index: 999; /* Z-Index tinggi biar di atas flatpickr */
+            opacity: 0; visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s;
+        }
+        .custom-select.open .select-options { opacity: 1; visibility: visible; transform: translateY(0); }
+        .option { padding: 12px 16px; cursor: pointer; font-size: 14px; }
+        .option:hover { background: var(--surface-hover); }
+
+        /* BUTTONS */
+        .action-bar { margin-top: 24px; display: flex; justify-content: flex-end; }
+        button { border: none; padding: 10px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-reset { background: var(--surface-hover); color: #ef4444; }
+        .btn-reset:hover { background: rgba(239, 68, 68, 0.1); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--surface-hover); color: var(--text-main); border: 1px solid var(--border); }
+
+        /* CARD LIST */
+        .drafts-list { margin-top: 32px; display: flex; flex-direction: column; gap: 16px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; display: flex; gap: 20px; }
+        .card-thumb { width: 140px; height: 100px; object-fit: cover; border-radius: 8px; background: #000; }
+        .card-content { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .card-meta { font-weight: 600; font-size: 15px; margin-bottom: 12px; }
+        .card-actions { display: flex; gap: 10px; }
+
+        /* CUSTOM STYLE FLATPICKR (Supaya makin nyatu sama tema) */
+        .flatpickr-calendar.dark {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .flatpickr-day.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        @media (max-width: 768px) { .controls { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 480px) { .controls { grid-template-columns: 1fr; } .card { flex-direction: column; } .card-thumb { width: 100%; height: auto; aspect-ratio: 16/9; } }
+    </style>
+</head>
+<body>
+
+    <main class="wrap">
+        <header>
+            <h1 class="title">Update Info Draft Tool</h1>
+            <div class="subtitle">Paste gambar → Generate poster otomatis.</div>
+        </header>
+
+        <div id="uploadBox" class="upload-box" tabindex="0">
+            <div class="upload-text">Klik atau Paste Gambar di sini</div>
+            <input id="fileInput" type="file" accept="image/*" hidden>
+        </div>
+
+        <section class="controls">
+            
+            <div class="field">
+                <label>Kota</label>
+                <div class="custom-select" id="citySelect">
+                    <div class="select-trigger">Jakarta</div>
+                    <div class="select-options">
+                        <div class="option">Jakarta</div>
+                        <div class="option">Bogor</div>
+                        <div class="option">Bandung</div>
+                        <div class="option">Palembang</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Tanggal</label>
+                <div class="input-wrap">
+                    <input id="dateInput" type="text" placeholder="Pilih Tanggal">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Jam Mulai</label>
+                <div class="input-wrap">
+                    <input id="timeStart" type="text" placeholder="00:00">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Jam Selesai</label>
+                <div class="input-wrap">
+                    <input id="timeEnd" type="text" placeholder="00:00">
+                </div>
+            </div>
+
+        </section>
+
+        <div class="action-bar">
+            <button id="resetBtn" class="btn-reset">Reset Semua</button>
+        </div>
+
+        <div id="draftsList" class="drafts-list"></div>
+    </main>
+
+    <script>
+        // --- 1. INISIALISASI VARIABEL ---
+        const els = {
+            uploadBox: document.getElementById("uploadBox"),
+            fileInput: document.getElementById("fileInput"),
+            draftsList: document.getElementById("draftsList"),
+            citySelect: document.getElementById("citySelect"),
+            resetBtn: document.getElementById("resetBtn")
+        };
+        let state = { city: "Jakarta" };
+
+        // --- 2. SETUP FLATPICKR (Kalender Keren) ---
+        
+        // Config Tanggal
+        const datePicker = flatpickr("#dateInput", {
+            dateFormat: "Y-m-d",
+            defaultDate: new Date().fp_incr(1), // Besok
+            theme: "dark",
+            disableMobile: "true" // Paksa pakai style custom di HP
+        });
+
+        // Config Jam Mulai
+        const timeStartPicker = flatpickr("#timeStart", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr: true,
+            defaultDate: "09:00",
+            disableMobile: "true",
+            onClose: function(selectedDates, dateStr, instance) {
+                // Auto set Jam Selesai +1 jam
+                if(dateStr) {
+                    let [h, m] = dateStr.split(':');
+                    let nextHour = String((parseInt(h) + 1) % 24).padStart(2, '0');
+                    timeEndPicker.setDate(`${nextHour}:${m}`);
+                }
+            }
+        });
+
+        // Config Jam Selesai
+        const timeEndPicker = flatpickr("#timeEnd", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr: true,
+            defaultDate: "10:00",
+            disableMobile: "true"
+        });
+
+
+        // --- 3. LOGIKA BUTTON RESET (SweetAlert2) ---
+        els.resetBtn.onclick = () => {
+            Swal.fire({
+                title: 'Hapus Semua?',
+                text: "Draft yang sudah dibuat akan hilang.",
+                icon: 'warning',
+                background: '#1e293b', // Warna dark mode
+                color: '#fff',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444', // Merah
+                cancelButtonColor: '#334155', // Abu
+                confirmButtonText: 'Ya, Hapus',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    els.draftsList.innerHTML = "";
+                    Swal.fire({
+                        title: 'Terhapus!',
+                        icon: 'success',
+                        background: '#1e293b',
+                        color: '#fff',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        };
+
+
+        // --- 4. LOGIKA CUSTOM SELECT (Sama seperti sebelumnya) ---
+        const trigger = els.citySelect.querySelector(".select-trigger");
+        const options = els.citySelect.querySelectorAll(".option");
+
+        trigger.onclick = (e) => { e.stopPropagation(); els.citySelect.classList.toggle("open"); };
+        
+        options.forEach(opt => {
+            opt.onclick = () => {
+                state.city = opt.innerText;
+                trigger.innerText = state.city;
+                els.citySelect.classList.remove("open");
+            };
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!els.citySelect.contains(e.target)) els.citySelect.classList.remove("open");
+        });
+
+
+        // --- 5. LOGIKA UPLOAD & GENERATE (Sama seperti sebelumnya) ---
+        
+        // --- 5. LOGIKA UPLOAD & GENERATE (UPDATED GLOBAL PASTE) ---
+        
+        // A. Klik Manual
+        els.uploadBox.onclick = () => els.fileInput.click();
+        
+        // B. Saat file dipilih manual
+        els.fileInput.onchange = (e) => { 
+            if (e.target.files[0]) processFile(e.target.files[0]); 
+        };
+
+        // C. Drag & Drop Visual Effect
+        els.uploadBox.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            els.uploadBox.style.borderColor = "var(--primary)";
+            els.uploadBox.style.background = "rgba(59, 130, 246, 0.1)";
+        });
+
+        els.uploadBox.addEventListener("dragleave", () => {
+            els.uploadBox.style.borderColor = "";
+            els.uploadBox.style.background = "";
+        });
+
+        els.uploadBox.addEventListener("drop", (e) => {
+            e.preventDefault();
+            // Reset style
+            els.uploadBox.style.borderColor = "";
+            els.uploadBox.style.background = "";
+            
+            const f = e.dataTransfer.files[0];
+            if (f && f.type.startsWith("image/")) processFile(f);
+        });
+        
+        // D. GLOBAL PASTE (PASTE DIMANA SAJA)
+        window.addEventListener("paste", (e) => {
+            const items = e.clipboardData.items;
+            for (const item of items) {
+                if (item.type.indexOf("image") !== -1) {
+                    e.preventDefault(); // Mencegah paste teks filename
+                    
+                    // Efek visual sebentar biar tau berhasil
+                    els.uploadBox.style.borderColor = "#22c55e"; // Hijau
+                    setTimeout(() => els.uploadBox.style.borderColor = "", 300);
+
+                    const blob = item.getAsFile();
+                    processFile(blob);
+                    return;
+                }
+            }
+        });
+
+        // --- (Sisanya function formatDate, generateCaptionText, dll biarkan saja) ---
+        function formatDate(dateStr) {
+            const d = new Date(dateStr);
+            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+            return isNaN(d) ? "" : `${d.getDate()} ${months[d.getMonth()]}`;
+        }
+
+        function generateCaptionText() {
+            // Ambil value dari Flatpickr
+            const dateVal = document.getElementById("dateInput").value;
+            const startVal = document.getElementById("timeStart").value;
+            const endVal = document.getElementById("timeEnd").value;
+            
+            return `${state.city} — ${formatDate(dateVal)} Jam ${startVal} - ${endVal}`;
+        }
+
+        async function createPosterBlob(sourceBlob, textOverlay) {
+            const img = await createImageBitmap(sourceBlob);
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height + 160;
+            const ctx = canvas.getContext("2d");
+
+            ctx.fillStyle = "#0b1220";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            ctx.fillStyle = "#0f1624";
+            ctx.fillRect(40, img.height + 30, canvas.width - 80, 90);
+            ctx.fillStyle = "white";
+            ctx.font = "600 36px Inter, sans-serif";
+            ctx.textBaseline = "middle";
+            ctx.fillText(textOverlay, 60, img.height + 75);
+
+            return new Promise(r => canvas.toBlob(r, "image/png"));
+        }
+
+        async function processFile(blob) {
+            if(!blob) return;
+            const caption = generateCaptionText();
+            const previewUrl = URL.createObjectURL(blob);
+            const card = document.createElement("div");
+            
+            card.className = "card";
+            card.innerHTML = `
+                <img src="${previewUrl}" class="card-thumb">
+                <div class="card-content">
+                    <div class="card-meta">${caption}</div>
+                    <div class="card-actions">
+                        <button class="btn-primary copy-poster">Copy Poster</button>
+                        <button class="btn-secondary copy-text">Copy Text</button>
+                    </div>
+                </div>
+            `;
+            
+            els.draftsList.prepend(card);
+
+            // Logic Copy Text
+            card.querySelector(".copy-text").onclick = function() {
+                navigator.clipboard.writeText(caption);
+                let btn = this; btn.innerText = "Copied!";
+                setTimeout(()=> btn.innerText = "Copy Text", 1500);
+            };
+
+            // Logic Copy Poster
+            card.querySelector(".copy-poster").onclick = async function() {
+                let btn = this; 
+                btn.innerText = "Processing..."; btn.disabled = true;
+                const posterBlob = await createPosterBlob(blob, caption);
+                if(posterBlob){
+                    try {
+                        await navigator.clipboard.write([new ClipboardItem({"image/png": posterBlob})]);
+                        btn.innerText = "Copied!";
+                    } catch(e) {
+                        alert("Gagal copy otomatis. Gunakan klik kanan pada hasil.");
+                        btn.innerText = "Error";
+                    }
+                }
+                setTimeout(()=> { btn.innerText = "Copy Poster"; btn.disabled = false; }, 2000);
+            };
+        }
+
+    </script>
+</body>
+</html>
